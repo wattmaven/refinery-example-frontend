@@ -1,0 +1,41 @@
+name: changesets
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  version:
+    # Don't run this workflow on the template repository, only on user repositories.
+    if: ${{ !github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    permissions: write-all
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm i
+
+      - name: create release pull request
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm ci:version
+          publish: pnpm ci:publish
+          commit: "chore: update versions"
+          title: "chore: update versions"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
